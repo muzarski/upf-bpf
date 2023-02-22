@@ -28,7 +28,7 @@
 #include "xdp_stats_kern.h"
 #include "xdp_stats_kern_user.h"
 
-static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_value, u32 ipv4_address)
+static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_value, u32[4] ip_address, u8 is_ipv6)
 {
   struct next_rule_prog_index_key map_key;
   u32 *index_prog;
@@ -37,8 +37,23 @@ static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_val
 
   map_key.teid = teid;
   map_key.source_value = source_value;
-  map_key.ipv4_address = ipv4_address;
-  bpf_debug("map key teid: %d, source: %d, ip: %d \n", map_key.teid, map_key.source_value, map_key.ipv4_address);
+
+  if (is_ipv6)
+    map_key.ip_address = ip_address;
+  else {
+    map_key.ip_address[0] = ntohl(ip_address[0]);
+    for(int i = 0; i < 3; ++i)
+      map_key.ip_address[i] = 0;
+  }
+
+  map_key.ip_is_ipv6_flag = is_ipv6 ? 1 : 0;
+
+  bpf_debug("map key teid: %d, source: %d ip_address: ", map_key.teid, map_key.source_value);
+  for (int i = 3; i >= 0; --i) {
+    bpf_debug("%d", ntohl(ip_src[i]));
+  }
+  bpf_debug("ip is IPv6: %d", map_key.ip_is_ipv6_flag);
+
   index_prog = bpf_map_lookup_elem(&m_next_rule_prog_index, &map_key);
 
   if(index_prog){
@@ -82,7 +97,12 @@ static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, u32 src_ue_
   }
 
   // Jump to session context.
-  tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip);
+  u32 ip_adress[4];
+  ip_adress[0] = src_ue_ip;
+  for(int i = 0; i < 3; ++i)
+    map_key.ip_address[i] = 0;
+
+  tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip, 0);
   bpf_debug("BPF tail call was not executed! teid %d\n", htonl(p_gtpuh->teid));
 
   return XDP_PASS;
