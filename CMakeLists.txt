@@ -8,6 +8,9 @@ endif()
 
 message(STATUS "CMAKE={${CMAKE_SYSTEM_PROCESSOR}}")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+add_definitions(-DDEBUG)
+
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/extern/libbpf/src
     AND ${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog
     AND ${CMAKE_CURRENT_SOURCE_DIR}/extern/cpp-httplib

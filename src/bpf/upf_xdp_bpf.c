@@ -12,6 +12,7 @@
 #include <protocols/gtpu.h>
 #include <protocols/ip.h>
 #include <protocols/udp.h>
+#include <protocols/ipv6.h>
 #include <upf_xdp_bpf_maps.h>
 #include <utils/logger.h>
 #include <utils/utils.h>
@@ -163,6 +164,46 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   }
 }
 
+static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
+{
+  bpf_debug("IPV6 PACKET!!!");
+
+  void *p_data_end = (void *)(long)p_ctx->data_end;
+  u32 *ip_src;
+  u32 *ip_dst;
+
+  if ((void *)ipv6h + sizeof(*ipv6h) > p_data_end) {
+    bpf_debug("Invalid IPv6 packet");
+    return XDP_ABORTED;
+  }
+
+  ip_src = ipv6h->saddr.in6_u.u6_addr32;
+  ip_dst = ipv6h->daddr.in6_u.u6_addr32;
+
+  bpf_debug("IPv6 SRC: ");
+  for (int i = 3; i >= 0; --i) {
+    bpf_debug("HAHA");
+    bpf_debug("%d", ntohl(ip_src[i]));
+  }
+
+  bpf_debug("IPv6 DST: ");
+  for (int i = 3; i >= 0; --i) {
+    bpf_debug("%.8x", ntohl(ip_dst[i]));
+  }
+
+  switch(ipv6h->nexthdr) {
+  case IPPROTO_UDP:
+    bpf_debug("UPD DETECTED");
+    return XDP_PASS;
+  case IPPROTO_TCP:
+  default:
+    bpf_debug("TCP protocol L4");
+    return XDP_PASS;
+  }
+
+  return XDP_PASS;
+}
+
 /**
  * @brief Check if inner IP header is IPv4.
  *
@@ -181,6 +222,19 @@ static u8 ip_inner_check_ipv4(struct xdp_md *p_ctx, struct iphdr *iph)
   }
 
   return iph->version == 4;
+}
+
+static u8 ip_inner_check_ipv6(struct xdp_md *p_ctx, struct ipv6hdr *iph)
+{
+  void *p_data_end = (void *)(long)p_ctx->data_end;
+
+  // Hint: +1 is sizeof(struct iphdr)
+  if((void *)iph + sizeof(*iph) > p_data_end) {
+    bpf_debug("Invalid IPv6 packet");
+    return XDP_ABORTED;
+  }
+
+  return iph->version == 6;
 }
 
 /**
@@ -229,6 +283,7 @@ static u32 eth_handle(struct xdp_md *p_ctx, struct ethhdr *ethh)
   case ETH_P_IP:
     return ipv4_handle(p_ctx, (struct iphdr *)((void *)ethh + offset));
   case ETH_P_IPV6:
+    return ipv6_handle(p_ctx, (struct ipv6hdr *)((void *)ethh + offset));
   // Skip non 802.3 Ethertypes
   case ETH_P_ARP:
   // Skip non 802.3 Ethertypes

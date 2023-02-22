@@ -37,7 +37,7 @@ main() {
   generate_env_file
 
   #Running the Container from service upf-bpf
-  docker-compose -f "${dirname}"/"${DOCKERCOMPOSEFILE}" run upf-bpf
+  docker compose -f "${dirname}"/"${DOCKERCOMPOSEFILE}" run upf-bpf
 
   #Removing temporary generated env file
   trap CleanUp EXIT

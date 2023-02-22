@@ -212,7 +212,7 @@ static u32 pfcp_far_apply(struct xdp_md *p_ctx, pfcp_far_t_ *p_far)
         }
         __builtin_memcpy(p_new_eth, p_eth, sizeof(*p_eth));
 
-        // Update destination mac address.
+        // Update destination mac address.o
         struct iphdr *p_ip = (void *)(p_new_eth + 1);
 
         if((void *)(p_ip + 1) > p_data_end) {
@@ -226,7 +226,11 @@ static u32 pfcp_far_apply(struct xdp_md *p_ctx, pfcp_far_t_ *p_far)
         // Adjust head to the right.
         bpf_xdp_adjust_head(p_ctx, GTP_ENCAPSULATED_SIZE);
 
-        return bpf_redirect_map(&m_redirect_interfaces, UPLINK, 0);
+        long act = bpf_redirect_map(&m_redirect_interfaces, UPLINK, 0);
+        if (act == XDP_REDIRECT) {
+          bpf_debug("REDIRECT SUCCESSFUL!\n");
+        }
+        return act;
         bpf_debug("OUTER_HEADER_CREATION_UDP_IPV4 REDIRECT FAILED\n");
         break;
       case OUTER_HEADER_CREATION_UDP_IPV6:
