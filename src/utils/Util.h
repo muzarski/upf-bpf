@@ -19,6 +19,7 @@ public:
   static std::vector<u_char> stringToMac(std::string const &s);
   static void getFlowDirection(std::string direction);
   static struct in_addr convertIpToInet(std::string ipAddress);
+  static struct in6_addr convertIp6ToInet(std::string ipAddress);
 private:
 };
 

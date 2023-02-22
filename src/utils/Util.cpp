@@ -35,3 +35,13 @@ struct in_addr Util::convertIpToInet(std::string ipAddress){
   return inetIpAddress;
 }
 
+struct in6_addr Util::convertIp6ToInet(std::string ipAddress) {
+  struct in6_addr inetIp6Address;
+  if (inet_pton(AF_INET6, ipAddress.c_str(), &inetIp6Address) == 0) {
+    fprintf(stderr, "Invalid Ipv6 address\n");
+    throw std::runtime_error("Invalid Ipv6 address");
+  }
+  
+  return inetIp6Address;
+}
+
