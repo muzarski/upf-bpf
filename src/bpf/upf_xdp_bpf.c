@@ -74,7 +74,7 @@ static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_val
  * @param p_gtpuh The GTP header.
  * @return u32 The XDP action.
  */
-static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, u32 src_ue_ip)
+static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, u32[4] src_ue_ip, u8 is_ip6)
 {
   void *p_data_end = (void *)(long)p_ctx->data_end;
 
@@ -91,18 +91,33 @@ static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, u32 src_ue_
 
   bpf_debug("GTP GPDU received");
 
-  if(!ip_inner_check_ipv4(p_ctx, (struct iphdr *)(p_gtpuh + 1))) {
-    bpf_debug("Invalid IP inner");
+  if(is_ipv6 && !ip_inner_check_ipv6(p_ctx, (struct  ipv6hdr *)(p_gtpuh + 1))) {
+    bpf_debug("Invalid IPv6 inner");
+    return XDP_DROP;
+  } else if( !ip_inner_check_ipv4(p_ctx, (struct iphdr *)(p_gtpuh + 1))) {
+    bpf_debug("Invalid IPv4 inner");
     return XDP_DROP;
   }
 
   // Jump to session context.
-  u32 ip_adress[4];
-  ip_adress[0] = src_ue_ip;
-  for(int i = 0; i < 3; ++i)
-    map_key.ip_address[i] = 0;
+  u32 ip_address[4];
 
-  tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip, 0);
+  if (is_ip6) {
+    ip_adress[0] = src_ue_ip[0];
+    for(int i = 0; i < 3; ++i)
+      src_ue_ip[i] = 0;
+  } else {
+    ip_address = src_ue_ip;
+  }
+
+  if (is_ip6) {
+    bpf_debug("BPF tail calling from GTP_handle for IPV6");
+    tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip, 1);
+  } else {
+    bpf_debug("BPF tail calling from GTP_handle for IPV4");
+    tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip, 0);
+  }
+
   bpf_debug("BPF tail call was not executed! teid %d\n", htonl(p_gtpuh->teid));
 
   return XDP_PASS;
@@ -162,16 +177,21 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
 {
   void *p_data_end = (void *)(long)p_ctx->data_end;
   // Type need to match map.
-  u32 ip_src;
-  u32 ip_dest;
+  u32 ip_src[4];
+  u32 ip_dest[4];
 
   // Hint: +1 is sizeof(struct iphdr)
   if((void *)iph + sizeof(*iph) > p_data_end) {
     bpf_debug("Invalid IPv4 packet");
     return XDP_ABORTED;
   }
-  ip_src = iph->saddr;
-  ip_dest = iph->daddr;
+  ip_src[0] = iph->saddr;
+  ip_dest[0] = iph->daddr;
+
+  for(int i = 0; i < 3; ++i) {
+    ip_src[i] = 0;
+    ip_dest[i] = 0;
+  }
 
   bpf_debug("Valid IPv4 packet: raw daddr:0x%x", ip_dest);
   switch(iph->protocol) {
