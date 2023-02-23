@@ -267,7 +267,7 @@ static u8 ip_inner_check_ipv6(struct xdp_md *p_ctx, struct ipv6hdr *iph)
     return XDP_ABORTED;
   }
 
-  return iph->version == 6; //TODO check if this is ok
+  return iph->version == 6;
 }
 
 /**
