@@ -4,7 +4,7 @@
 #include <linux/udp.h>
 #include <types.h>
 
-static u32 udp_handle(struct xdp_md *ctx, struct udphdr *udph, u32 src_ip, u32 dest_ip);
+static u32 udp_handle(struct xdp_md *p_ctx, struct udphdr *udph, const u32 src_ip[4], const u32 dest_ip[4], u8 is_ip6);
 
 
 #endif // PROTOCOLS_UDP_H
