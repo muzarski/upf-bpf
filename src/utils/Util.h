@@ -25,7 +25,7 @@ public:
     uint32_t ip[4];
     uint8_t is_v6;
   };
-struct ipKey convertIpToIpKey(const std::string &ipAddress);
+  static struct ipKey convertIpToIpKey(const std::string &ipAddress);
 private:
 };
 

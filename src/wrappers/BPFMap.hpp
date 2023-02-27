@@ -93,10 +93,10 @@ int BPFMap::update(KeyType &key, ValueType &value, int flags)
 
   if(updateReturn != 0) {
     // FIXME navarrothiago - Maybe Key is not support by fmt.
-    LOG_ERROR("{}. The key {} cannot be updated in map {}", strerror(updateReturn), key, mName);
+    LOG_ERROR("{}. The key cannot be updated in map {}", strerror(updateReturn), mName);
     throw std::runtime_error("The BPF map cannot be updated");
   }else{
-    LOG_DBG("The key {} was updated at {} map!", key, mName);
+    LOG_DBG("The key was updated at {} map!", mName);
     LOG_DBG("The key was updated at {} map!", mName);
   }
   return updateReturn;
