@@ -72,7 +72,7 @@ public:
    */
   std::shared_ptr<SessionProgram> findSessionProgram(uint32_t seid);
 
-  void createPipeline(uint32_t seid, uint32_t teid, uint8_t sourceInterface, uint32_t ueIpAddress, std::shared_ptr<pfcp::pfcp_far> pFar);
+  void createPipeline(uint32_t seid, uint32_t teid, uint8_t sourceInterface, pfcp::ue_ip_address_t ueIpAddress, std::shared_ptr<pfcp::pfcp_far> pFar);
   void removePipeline(uint32_t seid);
   std::shared_ptr<SessionPrograms> findSessionPrograms(uint32_t seid);
 private:

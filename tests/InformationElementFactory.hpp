@@ -41,7 +41,8 @@ std::shared_ptr<PacketDetectionRules> createPDR(u16 pdrId, u32 farId, u32 teid, 
   return std::make_shared<PacketDetectionRulesImpl>(*pPdrProprietary);
 }
 
-std::shared_ptr<pfcp::create_pdr> createOaiPDR(u16 pdrId, u32 farId, u32 teid, u32 sourceInterface, struct in_addr ueIPv4, u16 outerHeaderRemoval, u32 precedence)
+std::shared_ptr<pfcp::create_pdr> createOaiPDR(u16 pdrId, u32 farId, u32 teid, u32 sourceInterface, 
+                                               struct sockaddr_storage ueIP, u16 outerHeaderRemoval, u32 precedence)
 {
   LOG_FUNC();
   std::shared_ptr<pfcp::create_pdr> pPdr = std::make_shared<pfcp::create_pdr>();
@@ -65,12 +66,21 @@ std::shared_ptr<pfcp::create_pdr> createOaiPDR(u16 pdrId, u32 farId, u32 teid, u
   pPdr->pdi.second.source_interface.first = true;
   pPdr->pdi.second.source_interface.second.interface_value = sourceInterface;
   pPdr->pdi.second.ue_ip_address.first = true;
-  pPdr->pdi.second.ue_ip_address.second.ipv4_address.s_addr = ueIPv4.s_addr;
+  if (ueIP.ss_family == AF_INET) {
+    pPdr->pdi.second.ue_ip_address.second.ipv4_address = ((struct sockaddr_in*) &ueIP)->sin_addr;
+  }
+  else {
+    pPdr->pdi.second.ue_ip_address.second.ipv6_address = ((struct sockaddr_in6*) &ueIP)->sin6_addr;
+  }
+  pPdr->pdi.second.ue_ip_address.second.v4 = ueIP.ss_family == AF_INET;
+  pPdr->pdi.second.ue_ip_address.second.v6 = ueIP.ss_family == AF_INET6;
 
   return pPdr;
 }
 
-std::shared_ptr<pfcp::create_far> createOaiFAR(u32 farId, apply_action_t_ actions, u32 destinationInterface, u16 outerHeadeCreation, struct in_addr destinationIPv4, u16 destinationPort)
+std::shared_ptr<pfcp::create_far> createOaiFAR(u32 farId, apply_action_t_ actions, u32 destinationInterface, 
+                                               u16 outerHeadeCreation, struct sockaddr_storage destinationIP, 
+                                               u16 destinationPort)
 {
   LOG_FUNC();
   std::shared_ptr<pfcp::create_far> pFar = std::make_shared<pfcp::create_far>();
@@ -82,7 +92,12 @@ std::shared_ptr<pfcp::create_far> createOaiFAR(u32 farId, apply_action_t_ action
   pFar->forwarding_parameters.first = true;
   pFar->forwarding_parameters.second.outer_header_creation.first = true;
   pFar->forwarding_parameters.second.outer_header_creation.second.outer_header_creation_description = outerHeadeCreation;
-  pFar->forwarding_parameters.second.outer_header_creation.second.ipv4_address = destinationIPv4;
+  if (destinationIP.ss_family == AF_INET) {
+    pFar->forwarding_parameters.second.outer_header_creation.second.ipv4_address = ((struct sockaddr_in*) &destinationIP)->sin_addr;
+  }
+  else {
+    pFar->forwarding_parameters.second.outer_header_creation.second.ipv6_address = ((struct sockaddr_in6*) &destinationIP)->sin6_addr;
+  }
   pFar->forwarding_parameters.second.outer_header_creation.second.port_number = destinationPort;
   pFar->forwarding_parameters.second.destination_interface.first = true;
   pFar->forwarding_parameters.second.destination_interface.second.interface_value = destinationInterface;
@@ -90,7 +105,9 @@ std::shared_ptr<pfcp::create_far> createOaiFAR(u32 farId, apply_action_t_ action
   return pFar;
 }
 
-std::shared_ptr<ForwardingActionRules> createFAR(u32 farId, apply_action_t_ actions, u32 destinationInterface, u16 outerHeadeCreation, struct in_addr destinationIPv4, u16 destinationPort)
+std::shared_ptr<ForwardingActionRules> createFAR(u32 farId, apply_action_t_ actions, u32 destinationInterface, 
+                                                 u16 outerHeadeCreation, struct in_addr destinationIPv4, 
+                                                 u16 destinationPort)
 {
   LOG_FUNC();
   // Proprietary structs.

@@ -5,6 +5,10 @@
 #include "LogDefines.h"
 #include <sstream>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
 
 Util::~Util() { LOG_FUNC(); }
 
@@ -45,3 +49,51 @@ struct in6_addr Util::convertIp6ToInet(std::string ipAddress) {
   return inetIp6Address;
 }
 
+
+struct sockaddr_storage Util::convertIpToSockaddr(const std::string& ipAddress) {
+  struct addrinfo *info;
+  struct sockaddr_storage res{};
+  
+  if (getaddrinfo(ipAddress.c_str(), nullptr, nullptr, &info) != 0) {
+    fprintf(stderr, "Invalid ip address\n");
+    throw std::runtime_error("Invalid ip address (getaddrinfo)\n");
+  }
+  
+  if (info->ai_family != AF_INET && info->ai_family != AF_INET6) {
+    fprintf(stderr, "Address is neither v4 nor v6.\n");
+    throw std::runtime_error("Address is neither v4 nor v6.\n");
+  }
+  
+  std::memcpy(&res, info->ai_addr, info->ai_addrlen);
+  
+  return res;
+}
+
+struct Util::ipKey Util::convertIpToIpKey(const std::string &ipAddress) {
+  struct ipKey key{};
+  std::memset(&key, 0, sizeof(key));
+  
+  struct addrinfo *info;
+  
+  if (getaddrinfo(ipAddress.c_str(), nullptr, nullptr, &info) != 0) {
+    fprintf(stderr, "Invalid ip address\n");
+    throw std::runtime_error("Invalid ip address (getaddrinfo)\n");
+  }
+  
+  if (info->ai_family != AF_INET && info->ai_family != AF_INET6) {
+    fprintf(stderr, "Address is neither v4 nor v6.\n");
+    throw std::runtime_error("Address is neither v4 nor v6.\n");
+  }
+  
+  key.is_v6 = info->ai_family == AF_INET6;
+  if (info->ai_family == AF_INET) {
+    struct in_addr *ipv4 = &((struct sockaddr_in*) info->ai_addr)->sin_addr;
+    std::memcpy(&key.ip, ipv4, sizeof(struct in_addr));
+  }
+  else {
+    struct in6_addr *ipv6 = &((struct sockaddr_in6*) info->ai_addr)->sin6_addr;
+    std::memcpy(&key.ip, ipv6, sizeof(struct in6_addr));
+  }
+  
+  return key;
+}

@@ -74,7 +74,7 @@ void SessionManager::createBPFSession(std::shared_ptr<pfcp::pfcp_session> pSessi
     throw std::runtime_error("No fields available");
   }
 
-  SessionProgramManager::getInstance().createPipeline(pSession->get_up_seid(), fteid.teid, sourceInterface.interface_value, ueIpAddress.ipv4_address.s_addr, pFar);
+  SessionProgramManager::getInstance().createPipeline(pSession->get_up_seid(), fteid.teid, sourceInterface.interface_value, ueIpAddress, pFar);
 
   LOG_DBG("Add session");
   mSeidToSession[pSession->get_up_seid()] = pSession;
