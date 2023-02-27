@@ -18,14 +18,13 @@
 #include <utils/utils.h>
 #include <next_prog_rule_key.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include "ip_key.h"
 
-#ifdef KERNEL_SPACE
-#include <linux/in.h>
-#else
-#include <netinet/in.h>
-#endif
+//#ifdef KERNEL_SPACE
+//#include <linux/in.h>
+//#else
+//#include <netinet/in.h>
+//#endif
 
 /* Defines xdp_stats_map */
 #include "xdp_stats_kern.h"
@@ -152,7 +151,6 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
 {
   void *p_data_end = (void *)(long)p_ctx->data_end;
   // Type need to match map.
-  char ipbuf[20];
 
   // Hint: +1 is sizeof(struct iphdr)
   if((void *)iph + sizeof(*iph) > p_data_end) {
@@ -160,19 +158,10 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
     return XDP_ABORTED;
   }
   
-  if (!inet_ntop(AF_INET, &iph->saddr, ipbuf, sizeof(ipbuf))) {
-    bpf_debug("Parsing ipv4 source address failed.");
-    // TODO: Check whether it works, than change to XDP_ABORTED.
-    return XDP_PASS;
-  }
-  bpf_debug("IPv4 src address: %s", ipbuf);
-  
-  if (!inet_ntop(AF_INET, &iph->daddr, ipbuf, sizeof(ipbuf))) {
-    bpf_debug("Parsing ipv4 dst address failed.");
-    // TODO: Check whether it works, than change to XDP_ABORTED.
-    return XDP_PASS;
-  }
-  bpf_debug("IPv4 dst address: %s", ipbuf);
+  u8 *ip_src_ptr = (u8 *)&iph->saddr;
+  u8 *ip_dst_ptr = (u8 *)&iph->daddr;
+  bpf_debug("IPv4 src address: %u.%u.%u.%u", ip_src_ptr[3], ip_src_ptr[2], ip_src_ptr[1], ip_src_ptr[0]);
+  bpf_debug("IPv4 dst address: %u.%u.%u.%u", ip_dst_ptr[3], ip_dst_ptr[2], ip_dst_ptr[1], ip_dst_ptr[0]);
 
   struct ip_key ip_src;
   struct ip_key ip_dst;
@@ -197,7 +186,6 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
 
 static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
 {
-  char ip6buf[40];
 
   void *p_data_end = (void *)(long)p_ctx->data_end;
 
@@ -206,21 +194,25 @@ static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
     bpf_debug("Invalid IPv6 packet");
     return XDP_ABORTED;
   }
-  bpf_debug("Valid IPv4 packet.\n");
+  bpf_debug("Valid IPv6 packet.\n");
   
-  if (!inet_ntop(AF_INET6, &ipv6h->saddr, ip6buf, sizeof(ip6buf))) {
-    bpf_debug("Parsing ipv6 source address failed.\n");
-    // TODO: Check whether it works, than change to XDP_ABORTED.
-    return XDP_PASS;
-  }
-  bpf_debug("IPv6 src address: %s\n", ip6buf);
   
-  if (!inet_ntop(AF_INET6, &ipv6h->daddr, ip6buf, sizeof(ip6buf))) {
-    bpf_debug("Parsing ipv6 dst address failed.\n");
-    // TODO: Check whether it works, than change to XDP_ABORTED.
-    return XDP_PASS;
-  }
-  bpf_debug("IPv6 dst address: %s\n", ip6buf);
+  bpf_debug("IPv6 src address: %x:%x:%x:%x:%x:%x:%x:%x\n", ntohl(ipv6h->saddr.in6_u.u6_addr16[0]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[1]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[2]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[3]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[4]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[5]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[6]),
+            ntohl(ipv6h->saddr.in6_u.u6_addr16[7]));
+  bpf_debug("IPv6 dst address: %x:%x:%x:%x:%x:%x:%x:%x\n", ntohl(ipv6h->daddr.in6_u.u6_addr16[0]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[1]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[2]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[3]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[4]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[5]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[6]),
+            ntohl(ipv6h->daddr.in6_u.u6_addr16[7]));
 
   struct ip_key ip_src;
   struct ip_key ip_dst;
