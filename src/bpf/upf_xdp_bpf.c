@@ -186,8 +186,19 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   u8 *ip_src_ptr = (u8 *)&iph->saddr;
   u8 *ip_dst_ptr = (u8 *)&iph->daddr;
 
-//  bpf_debug("IPv4 src address: %u.%u.%u.%u", ip_src_ptr[3], ip_src_ptr[2], ip_src_ptr[1], ip_src_ptr[0]);
-//  bpf_debug("IPv4 dst address: %u.%u.%u.%u", ip_dst_ptr[3], ip_dst_ptr[2], ip_dst_ptr[1], ip_dst_ptr[0]);
+  bpf_debug("IPv6 src address: ");
+
+  for(int i = 3; i >= 0; --i) {
+    bpf_debug("%x: ", ntohs(ip_src_ptr[i]));
+  }
+
+  bpf_debug("IPv4 dst address: ");
+
+  for(int i = 3; i >= 0; --i) {
+    bpf_debug("%x: ", ntohs(ip_dst_ptr[i]));
+  }
+
+
 
   struct ip_key ip_src;
   struct ip_key ip_dst;
@@ -222,16 +233,28 @@ static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
   }
   bpf_debug("Valid IPv6 packet.\n");
   
-  u8 buffer[40];
-  ipv6_to_string(ipv6h->saddr.in6_u.u6_addr8, buffer);
+//  u8 buffer[40];
+//  ipv6_to_string(ipv6h->saddr.in6_u.u6_addr8, buffer);
 
-  bpf_debug("IPv6 src address: %s\n", buffer);
+//  bpf_debug("IPv6 src address: %s\n", buffer);
 
-  ipv6_to_string(ipv6h->daddr.in6_u.u6_addr8, buffer);
+//  ipv6_to_string(ipv6h->daddr.in6_u.u6_addr8, buffer);
 
-  bpf_debug("IPv6 dst address: %s\n", buffer);
+//  bpf_debug("IPv6 dst address: %s\n", buffer);
 
-//  bpf_debug("IPv6 src address: %x:%x:%x:%x:%x:%x:%x:%x\n", ntohl(ipv6h->saddr.in6_u.u6_addr16[0]),
+  bpf_debug("IPv6 src address: ");
+
+  for(int i = 0; i < 8; ++i) {
+    bpf_debug("%x: ", ntohs(ipv6h->saddr.in6_u.u6_addr16[i]));
+  }
+
+  bpf_debug("IPv6 dst address: ");
+
+  for(int i = 0; i < 8; ++i) {
+    bpf_debug("%x: ", ntohs(ipv6h->daddr.in6_u.u6_addr16[i]));
+  }
+
+  //  bpf_debug("IPv6 src address: %x:%x:%x:%x:%x:%x:%x:%x\n", ntohl(ipv6h->saddr.in6_u.u6_addr16[0]),
 //            ntohl(ipv6h->saddr.in6_u.u6_addr16[1]),
 //            ntohl(ipv6h->saddr.in6_u.u6_addr16[2]),
 //            ntohl(ipv6h->saddr.in6_u.u6_addr16[3]),
