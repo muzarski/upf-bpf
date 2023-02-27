@@ -60,6 +60,6 @@ struct gtpuhdr
   /*The options start here. */
 } __attribute__((packed));
 
-static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, struct ip_key);
+static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, struct ip_key*);
 
 #endif // PROTOCOLS_GTP_H
