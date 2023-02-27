@@ -19,6 +19,7 @@
 #include <next_prog_rule_key.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include "ip_key.h"
 
 #ifdef KERNEL_SPACE
 #include <linux/in.h>
@@ -30,7 +31,7 @@
 #include "xdp_stats_kern.h"
 #include "xdp_stats_kern_user.h"
 
-static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_value, const u32 ip_address[4], u8 is_ipv6)
+static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_value, struct ip_key ipKey)
 {
   struct next_rule_prog_index_key map_key;
   u32 *index_prog;
@@ -41,9 +42,9 @@ static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_val
   map_key.teid = teid;
   map_key.source_value = source_value;
 
-  __builtin_memcpy(map_key.ip_address, ip_address, sizeof(u32) * 4);
+  __builtin_memcpy(&map_key.ip_address, &ipKey.ip_address, sizeof(u32) * 4);
 
-  map_key.ip_is_ipv6_flag = is_ipv6;
+  map_key.ip_is_ipv6_flag = ipKey.ip_is_ipv6_flag;
 
   index_prog = bpf_map_lookup_elem(&m_next_rule_prog_index, &map_key);
 
@@ -65,7 +66,7 @@ static u32 tail_call_next_prog(struct xdp_md *p_ctx, teid_t_ teid, u8 source_val
  * @param p_gtpuh The GTP header.
  * @return u32 The XDP action.
  */
-static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, const u32 src_ue_ip[4], u8 is_ip6)
+static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, struct ip_key ipKey)
 {
   void *p_data_end = (void *)(long)p_ctx->data_end;
 
@@ -91,7 +92,7 @@ static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, const u32 s
   }
 
   // Jump to session context.
-  tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, src_ue_ip, is_ip6);
+  tail_call_next_prog(p_ctx, p_gtpuh->teid, INTERFACE_VALUE_ACCESS, ipKey);
   bpf_debug("BPF tail call was not executed! teid %d\n", htonl(p_gtpuh->teid));
 
   return XDP_PASS;
@@ -108,7 +109,7 @@ static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, const u32 s
  * @param udph The UDP header.
  * @return u32 The XDP action.
  */
-static u32 udp_handle(struct xdp_md *p_ctx, struct udphdr *udph, const u32 src_ip[4], const u32 dest_ip[4], u8 is_ip6)
+static u32 udp_handle(struct xdp_md *p_ctx, struct udphdr *udph, struct ip_key ip_src, struct ip_key ip_dst)
 {
   void *p_data_end = (void *)(long)p_ctx->data_end;
   struct next_rule_prog_index_key map_key;
@@ -127,10 +128,10 @@ static u32 udp_handle(struct xdp_md *p_ctx, struct udphdr *udph, const u32 src_i
   switch(dport) {
   case GTP_UDP_PORT:
     // The source IP is the UE IP address (uplink).
-    return gtp_handle(p_ctx, (struct gtpuhdr *)(udph + 1), src_ip, is_ip6);
+    return gtp_handle(p_ctx, (struct gtpuhdr *)(udph + 1), ip_src);
   default:
     // The destination IP is the UE IP address (donwlink).
-    tail_call_next_prog(p_ctx, 0, INTERFACE_VALUE_CORE, dest_ip, is_ip6);
+    tail_call_next_prog(p_ctx, 0, INTERFACE_VALUE_CORE, ip_dst);
 
     return XDP_PASS;
   }
@@ -152,8 +153,6 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   void *p_data_end = (void *)(long)p_ctx->data_end;
   // Type need to match map.
   char ipbuf[20];
-  u32 ip_src[4];
-  u32 ip_dst[4];
 
   // Hint: +1 is sizeof(struct iphdr)
   if((void *)iph + sizeof(*iph) > p_data_end) {
@@ -175,16 +174,20 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   }
   bpf_debug("IPv4 dst address: %s", ipbuf);
 
-  __builtin_memset(ip_src, 0, sizeof(ip_src));
-  __builtin_memset(ip_dst, 0, sizeof(ip_dst));
-  ip_src[0] = iph->saddr;
-  ip_dst[0] = iph->daddr;
+  struct ip_key ip_src;
+  struct ip_key ip_dst;
+
+
+  __builtin_memset(&ip_src, 0, sizeof(ip_src));
+  __builtin_memset(&ip_dst, 0, sizeof(ip_dst));
+  ip_src.ip_address[0] = iph->saddr;
+  ip_dst.ip_address[0] = iph->daddr;
   
   
   switch(iph->protocol) {
   case IPPROTO_UDP:
     bpf_debug("UDP DETECTED FROM IPv4 handle");
-    return udp_handle(p_ctx, (struct udphdr *)(iph + 1), ip_src, ip_dst, 0);
+    return udp_handle(p_ctx, (struct udphdr *)(iph + 1), ip_src, ip_dst);
   case IPPROTO_TCP:
   default:
     bpf_debug("TCP protocol L4");
@@ -197,8 +200,7 @@ static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
   char ip6buf[40];
 
   void *p_data_end = (void *)(long)p_ctx->data_end;
-  u32 ip_src[4];
-  u32 ip_dst[4];
+
 
   if ((void *)ipv6h + sizeof(*ipv6h) > p_data_end) {
     bpf_debug("Invalid IPv6 packet");
@@ -219,14 +221,20 @@ static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
     return XDP_PASS;
   }
   bpf_debug("IPv6 dst address: %s\n", ip6buf);
-  
-  __builtin_memcpy(ip_src, ipv6h->saddr.in6_u.u6_addr32, sizeof(ip_src));
-  __builtin_memcpy(ip_dst, ipv6h->daddr.in6_u.u6_addr32, sizeof(ip_dst));
+
+  struct ip_key ip_src;
+  struct ip_key ip_dst;
+
+  __builtin_memcpy(&ip_src.ip_address, ipv6h->saddr.in6_u.u6_addr32, 4 * sizeof(u32));
+  __builtin_memcpy(&ip_dst.ip_address, ipv6h->daddr.in6_u.u6_addr32, 4 * sizeof(u32));
+
+  ip_src.ip_is_ipv6_flag = 1;
+  ip_dst.ip_is_ipv6_flag = 1;
 
   switch(ipv6h->nexthdr) {
   case IPPROTO_UDP:
     bpf_debug("UPD DETECTED FROM IPv6 handle");
-    return udp_handle(p_ctx, (struct udphdr *)(ipv6h + 1), ip_src, ip_dst, 1);
+    return udp_handle(p_ctx, (struct udphdr *)(ipv6h + 1), ip_src, ip_dst);
     return XDP_PASS;
   case IPPROTO_TCP:
   default:

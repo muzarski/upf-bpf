@@ -4,6 +4,7 @@
 #include <types.h>
 #include <linux/bpf.h>
 #include <stdint.h>
+#include "ip_key.h"
 
 #define GTP_ENCAPSULATED_SIZE (sizeof(struct iphdr) +      \
                                 sizeof(struct udphdr) +     \
@@ -59,6 +60,6 @@ struct gtpuhdr
   /*The options start here. */
 } __attribute__((packed));
 
-static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, const u32 src_ue_ip[4], u8 is_ip6);
+static u32 gtp_handle(struct xdp_md *p_ctx, struct gtpuhdr *p_gtpuh, struct ip_key);
 
 #endif // PROTOCOLS_GTP_H

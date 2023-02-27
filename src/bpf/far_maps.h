@@ -5,6 +5,7 @@
 #include <linux/bpf.h>
 #include <pfcp/pfcp_far.h>
 #include <types.h>
+#include "ip_key.h"
 
 // The unique FAR that will be consumed in this program.
 struct bpf_map_def SEC("maps") m_far = {
@@ -23,7 +24,7 @@ struct bpf_map_def SEC("maps") m_redirect_interfaces = {
 // TODO navarrothiago - pinned this maps. It not depend on the session program
 struct bpf_map_def SEC("maps") m_arp_table = {
 	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = 4 * sizeof(u32) + sizeof(u8), // IPv4 address
+  .key_size    = sizeof (struct ip_key), // IPv4 address
 	.value_size  = 6, // MAC address
 	.max_entries = 2,
 };

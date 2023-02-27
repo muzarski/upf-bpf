@@ -9,6 +9,7 @@
 #include <ie/teid.h>
 #include <next_prog_rule_map.h>
 #include <next_prog_rule_key.h>
+#include "ip_key.h"
 
 #define MAX_LENGTH 10
 
@@ -33,7 +34,7 @@ struct bpf_map_def SEC("maps") m_ueip_session = {
 };
 struct bpf_map_def SEC("maps") m_ue_ip_pdr = {
     .type = BPF_MAP_TYPE_HASH,
-    .key_size = 4 * sizeof(u32) + sizeof(u8),                        //!< UE IP
+    .key_size = sizeof (struct ip_key),                        //!< UE IP
     .value_size = sizeof(u32),                      //!< PDR
     .max_entries = 100000,
 };

@@ -1,13 +1,13 @@
 #ifndef __SESSION_CONTEXT_MAPS_H__
 #define __SESSION_CONTEXT_MAPS_H__
 
-#include <linux/bpf.h>
-#include <types.h>
-#include <pfcp/pfcp_pdr.h>
-#include <pfcp/pfcp_far.h>
-#include <ie/fteid.h>
+#include "ip_key.h"
 #include <ie/fseid.h>
-#include "m_arp_table_key.h"
+#include <ie/fteid.h>
+#include <linux/bpf.h>
+#include <pfcp/pfcp_far.h>
+#include <pfcp/pfcp_pdr.h>
+#include <types.h>
 #define MAX_LENGTH 10
 #define SESSION_PDRS_MAX_SIZE 10
 #define SESSION_FARS_MAX_SIZE 10
@@ -36,7 +36,7 @@ struct bpf_map_def SEC("maps") m_teid_pdr = {
 // TODO navarrothiago - Store multiple PDR.
 struct bpf_map_def SEC("maps") m_ueip_pdr = {
 	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = 4 * sizeof(u32) + sizeof(u8), // UE IP address
+	.key_size    = sizeof(struct ip_key), // UE IP address
 	.value_size  = sizeof(pfcp_pdr_t_), // assuming only one PDR
 	.max_entries = 10,
 };
@@ -45,7 +45,7 @@ struct bpf_map_def SEC("maps") m_ueip_pdr = {
 // TODO navarrothiago - pinned this maps. It not depend on the session program
 struct bpf_map_def SEC("maps") m_arp_table = {
 	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = sizeof(struct m_arp_table_key), // IPv4 address
+	.key_size    = sizeof(struct ip_key), // IPv4 address
 	.value_size  = 6, // MAC address
 	.max_entries = 2,
 };
