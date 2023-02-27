@@ -36,7 +36,7 @@ struct bpf_map_def SEC("maps") m_teid_pdr = {
 // TODO navarrothiago - Store multiple PDR.
 struct bpf_map_def SEC("maps") m_ueip_pdr = {
 	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = sizeof(u32), // UE IP address
+	.key_size    = 4 * sizeof(u32) + sizeof(u8), // UE IP address
 	.value_size  = sizeof(pfcp_pdr_t_), // assuming only one PDR
 	.max_entries = 10,
 };
