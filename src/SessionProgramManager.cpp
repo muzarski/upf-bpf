@@ -20,7 +20,7 @@
 
 std::ostream &operator<<(std::ostream &Str, struct next_rule_prog_index_key const &v)
 {
-  Str << "teid: " << v.teid << " source_interface: " << v.source_value << "ip: ", v.ipv4_address;
+  Str << "teid: " << v.teid << " source_interface: " << v.source_value << "ip: ", v.ip_address;
   return Str;
 }
 
@@ -43,14 +43,22 @@ void SessionProgramManager::setTeidSessionMap(std::shared_ptr<BPFMap> pProgramsM
   mpTeidSessionMap = pProgramsMaps;
 }
 
-void SessionProgramManager::createPipeline(uint32_t seid, uint32_t teid, uint8_t sourceInterface, uint32_t ueIpAddress,
+void SessionProgramManager::createPipeline(uint32_t seid, uint32_t teid, uint8_t sourceInterface, pfcp::ue_ip_address_t ueIpAddress,
                                    std::shared_ptr<pfcp::pfcp_far> pFar)
 {
   LOG_FUNC();
-  struct next_rule_prog_index_key key = {.teid = teid, .source_value = sourceInterface, .ipv4_address = ueIpAddress};
-  u32 id;
+  struct next_rule_prog_index_key key = {.teid = teid, .source_value = sourceInterface};
+  key.ip_is_ipv6_flag = ueIpAddress.v6;
+  if (ueIpAddress.v4) {
+    std::memcpy(&key.ip_address, &ueIpAddress.ipv4_address, sizeof(struct in_addr));
+  }
+  else {
+    std::memcpy(&key.ip_address, &ueIpAddress.ipv6_address, sizeof(struct in6_addr));
+  }
+  
+  uint32_t id;
   s32 fd;
-  LOG_DBG("teid: {}, source interface: {}, ue ip: {}", teid, sourceInterface, ueIpAddress);
+  LOG_DBG("teid: {}, source interface: {}", teid, sourceInterface);
 
   LOG_DBG("Instantiate a new FARProgram");
   // Instantiate a new FARProgram
@@ -90,7 +98,11 @@ void SessionProgramManager::createPipeline(uint32_t seid, uint32_t teid, uint8_t
                          pFar->forwarding_parameters.second.outer_header_creation.second.outer_header_creation_description,
                      // Fwd - ipv4
                      .forwarding_parameters.outer_header_creation.ipv4_address.s_addr =
-                         pFar->forwarding_parameters.second.outer_header_creation.second.ipv4_address.s_addr};
+                         pFar->forwarding_parameters.second.outer_header_creation.second.ipv4_address.s_addr,
+                     // Fwd - ipv6
+                     .forwarding_parameters.outer_header_creation.ipv6_address = 
+                         pFar->forwarding_parameters.second.outer_header_creation.second.ipv6_address
+  };
 
   // Fwd - actions
   memcpy(&far.apply_action, &pFar->apply_action, sizeof(apply_action_t_));

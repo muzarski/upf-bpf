@@ -67,7 +67,7 @@ int Controller::createSesssion(json &jRequest, json &jResponse)
 
     auto pPdr = createOaiPDR(element["pdrId"], element["farId"], htonl(element["pdi"]["teid"]),
                           sMapInterface[element["pdi"]["sourceInterface"]],
-                          Util::convertIpToInet(std::string(element["pdi"]["ueIPAddress"])),
+                          Util::convertIpToSockaddr(std::string(element["pdi"]["ueIPAddress"])),
                           sMapOuterHeader[element["outerHeaderRemoval"]], element["precedence"]);
     LOG_INF("Case: add PDR");
     pSession->create(*pPdr, cause, offending_ie.offending_ie, allocated_fteid);
@@ -79,7 +79,7 @@ int Controller::createSesssion(json &jRequest, json &jResponse)
         element["farId"],
         actions, sMapInterface[element["forwardingParameters"]["destinationInterface"]],
         sMapOuterHeader[element["forwardingParameters"]["outerHeaderCreation"]["outerHeaderCreationDescription"]],
-        Util::convertIpToInet(std::string(element["forwardingParameters"]["outerHeaderCreation"]["ipv4Address"])),
+        Util::convertIpToSockaddr(std::string(element["forwardingParameters"]["outerHeaderCreation"]["ipv4Address"])),
         element["forwardingParameters"]["outerHeaderCreation"]["portNumber"]);
     LOG_INF("Case: add FAR");
     LOG_WARN("FIXME - FORWARD ACTION IS ENABLE - HARDCODED");
@@ -99,17 +99,19 @@ int Controller::createSesssion(json &jRequest, json &jResponse)
     // Map ip to mac address.
     arpTable[element["ip"]] = element["mac"];
 
-    struct in_addr ip_addr;
-    if(inet_aton(std::string(element["ip"]).c_str(), &ip_addr) == 0) {
+//    struct in_addr ip_addr;
+//    if(inet_aton(std::string(element["ip"]).c_str(), &ip_addr) == 0) {
+//
+//      return 400;
+//    }
+    
+    struct Util::ipKey key = Util::convertIpToIpKey(std::string(element["ip"]));
 
-      return 400;
-    }
-
-    auto ip = static_cast<uint32_t>(ip_addr.s_addr);
+    // auto ip = static_cast<uint32_t>(ip_addr.s_addr);
     // auto pMacAddress = Util::getInstance().stringToMac(element["mac"]).data();
     auto pMacAddress = ether_aton(std::string(element["mac"]).c_str());
     // pSessionProgram->getArpTableMap()->update(ip, pMacAddress->ether_addr_octet, BPF_ANY);
-    pSessionPrograms->getFARProgram()->getArpTableMap()->update(ip, pMacAddress->ether_addr_octet, BPF_ANY);
+    pSessionPrograms->getFARProgram()->getArpTableMap()->update(key, pMacAddress->ether_addr_octet, BPF_ANY);
   }
   return 200;
 }
