@@ -7,7 +7,7 @@
 #include <pfcp/pfcp_far.h>
 #include <ie/fteid.h>
 #include <ie/fseid.h>
-
+#include "m_arp_table_key.h"
 #define MAX_LENGTH 10
 #define SESSION_PDRS_MAX_SIZE 10
 #define SESSION_FARS_MAX_SIZE 10
@@ -40,11 +40,12 @@ struct bpf_map_def SEC("maps") m_ueip_pdr = {
 	.value_size  = sizeof(pfcp_pdr_t_), // assuming only one PDR
 	.max_entries = 10,
 };
+
 // Static ARP Table. Used to get the MAC address of the next hop.
 // TODO navarrothiago - pinned this maps. It not depend on the session program
 struct bpf_map_def SEC("maps") m_arp_table = {
 	.type        = BPF_MAP_TYPE_HASH,
-	.key_size    = sizeof(u32), // IPv4 address
+	.key_size    = sizeof(struct m_arp_table_key), // IPv4 address
 	.value_size  = 6, // MAC address
 	.max_entries = 2,
 };
