@@ -8,7 +8,7 @@
 
 struct bpf_map_def SEC("maps") m_next_rule_prog = {
     .type = BPF_MAP_TYPE_PROG_ARRAY,
-    .key_size = sizeof(struct next_rule_prog_index_key),
+    .key_size = sizeof(u32),
     .value_size = sizeof(s32),
     .max_entries = 10,
 };
