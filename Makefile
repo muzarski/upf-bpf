@@ -39,6 +39,7 @@ rebuild: clean deload all ## Clean, deload and build all
 
 clean: ## Clean all build files
 	rm -Rf build
+	rm -Rf src/skel
 
 clean-all: clean ## Clean all build and dependencies
 	cd extern/libbpf/src && \
