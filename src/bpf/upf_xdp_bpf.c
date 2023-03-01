@@ -189,13 +189,13 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   bpf_debug("IPv4 src address: ");
 
   for(int i = 3; i >= 0; --i) {
-    bpf_debug("%u: ", ntohs(ip_src_ptr[i]));
+    bpf_debug("%u: ", ip_src_ptr[i]);
   }
 
   bpf_debug("IPv4 dst address: ");
 
   for(int i = 3; i >= 0; --i) {
-    bpf_debug("%u: ", ntohs(ip_dst_ptr[i]));
+    bpf_debug("%u: ", ip_dst_ptr[i]);
   }
 
 
