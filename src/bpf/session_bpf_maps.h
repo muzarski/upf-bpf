@@ -47,6 +47,6 @@ struct bpf_map_def SEC("maps") m_arp_table = {
 	.type        = BPF_MAP_TYPE_HASH,
 	.key_size    = sizeof(struct ip_key), // IPv4 address
 	.value_size  = 6, // MAC address
-	.max_entries = 2,
+	.max_entries = 4,
 };
 #endif // __SESSION_CONTEXT_MAPS_H__
