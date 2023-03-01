@@ -49,13 +49,18 @@ int xdp_redirect_gtpu(struct xdp_md *p_ctx)
 static u32 update_dst_mac_address(struct iphdr *p_ip, struct ethhdr *p_eth)
 {
   void *p_mac_address;
+  struct ip_key key;
+  __builtin_memset(&key, 0, sizeof(key));
+  key.ip_address[0] = p_ip->daddr;
+  key.ip_is_ipv6_flag = 0;
+  
 
-  p_mac_address = bpf_map_lookup_elem(&m_arp_table, &p_ip->daddr);
+  p_mac_address = bpf_map_lookup_elem(&m_arp_table, &key);
   if(!p_mac_address) {
     bpf_debug("mac not found!!\n");
     return 1;
   }
-  memcpy(p_eth->h_dest, p_mac_address, sizeof(p_eth->h_dest));
+  __builtin_memcpy(p_eth->h_dest, p_mac_address, sizeof(p_eth->h_dest));
   return 0;
 }
 
@@ -130,7 +135,13 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
 
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[0], p_eth->h_dest[1], p_eth->h_dest[2]);
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[3], p_eth->h_dest[4], p_eth->h_dest[5]);
-  p_mac_address = bpf_map_lookup_elem(&m_arp_table, &p_ip->daddr);
+  
+  struct ip_key key;
+  __builtin_memset(&key, 0, sizeof(key));
+  key.ip_address[0] = p_ip->daddr;
+  key.ip_is_ipv6_flag = 0;
+  
+  p_mac_address = bpf_map_lookup_elem(&m_arp_table, &key);
   if(!p_mac_address) {
     bpf_debug("mac not found!!\n");
     return XDP_DROP;
