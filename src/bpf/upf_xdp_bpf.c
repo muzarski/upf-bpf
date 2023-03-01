@@ -282,7 +282,7 @@ static u32 ipv6_handle(struct xdp_md *p_ctx, struct ipv6hdr *ipv6h)
 
   switch(ipv6h->nexthdr) {
   case IPPROTO_UDP:
-    bpf_debug("UPD DETECTED FROM IPv6 handle");
+    bpf_debug("UDP DETECTED FROM IPv6 handle");
     return udp_handle(p_ctx, (struct udphdr *)(ipv6h + 1), &ip_src, &ip_dst);
     return XDP_PASS;
   case IPPROTO_TCP:
@@ -307,7 +307,6 @@ static u8 ip_inner_check_ipv4(struct xdp_md *p_ctx, struct iphdr *iph)
 
   // Hint: +1 is sizeof(struct iphdr)
   if((void *)iph + sizeof(*iph) > p_data_end) {
-    bpf_debug("Invalid IPv4 packet");
     return XDP_ABORTED;
   }
 
@@ -320,7 +319,6 @@ static u8 ip_inner_check_ipv6(struct xdp_md *p_ctx, struct ipv6hdr *iph)
 
   // Hint: +1 is sizeof(struct iphdr)
   if((void *)iph + sizeof(*iph) > p_data_end) {
-    bpf_debug("Invalid IPv6 packet");
     return XDP_ABORTED;
   }
 
