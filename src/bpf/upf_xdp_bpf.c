@@ -186,16 +186,16 @@ static u32 ipv4_handle(struct xdp_md *p_ctx, struct iphdr *iph)
   u8 *ip_src_ptr = (u8 *)&iph->saddr;
   u8 *ip_dst_ptr = (u8 *)&iph->daddr;
 
-  bpf_debug("IPv6 src address: ");
+  bpf_debug("IPv4 src address: ");
 
   for(int i = 3; i >= 0; --i) {
-    bpf_debug("%x: ", ntohs(ip_src_ptr[i]));
+    bpf_debug("%u: ", ntohs(ip_src_ptr[i]));
   }
 
   bpf_debug("IPv4 dst address: ");
 
   for(int i = 3; i >= 0; --i) {
-    bpf_debug("%x: ", ntohs(ip_dst_ptr[i]));
+    bpf_debug("%u: ", ntohs(ip_dst_ptr[i]));
   }
 
 
