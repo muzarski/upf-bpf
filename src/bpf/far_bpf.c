@@ -87,6 +87,7 @@ static u32 create_outer_header_udp_ipv4(struct xdp_md *p_ctx) {
     bpf_debug("Outer header is ipv6");
     outer_header_size = GTP6_ENCAPSULATED_SIZE;
   }
+  p_eth->h_proto = ETH_P_IP;
   
   struct ethhdr *p_new_eth = p_data + outer_header_size;
   
