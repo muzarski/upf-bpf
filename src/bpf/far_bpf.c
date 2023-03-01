@@ -65,6 +65,54 @@ static u32 update_dst_mac_address(struct iphdr *p_ip, struct ethhdr *p_eth)
   return 0;
 }
 
+static u32 create_outer_header_udp_ipv4(struct xdp_md *p_ctx) {
+  bpf_debug("create_outer_header_udp_ipv4");
+  
+  struct ethhdr *p_eth;
+  void *p_data = (void *)(long)p_ctx->data;
+  void *p_data_end = (void *)(long)p_ctx->data_end;
+  
+  p_eth = p_data;
+  if((void *)(p_eth + 1) > p_data_end) {
+    bpf_debug("Invalid pointer");
+    return XDP_DROP;
+  }
+  
+  int32_t outer_header_size;
+  if (p_eth->h_proto == ETH_P_IP) {
+    bpf_debug("Outer header is ipv4");
+    outer_header_size = GTP_ENCAPSULATED_SIZE;
+  }
+  else {
+    bpf_debug("Outer header is ipv6");
+    outer_header_size = GTP6_ENCAPSULATED_SIZE;
+  }
+  
+  struct ethhdr *p_new_eth = p_data + outer_header_size;
+  
+  // Move eth header forward.
+  if((void *)(p_new_eth + 1) > p_data_end) {
+    return 1;
+  }
+  __builtin_memcpy(p_new_eth, p_eth, sizeof(*p_eth));
+
+  // Update destination mac address.o
+  struct iphdr *p_ip = (void *)(p_new_eth + 1);
+
+  if((void *)(p_ip + 1) > p_data_end) {
+    return XDP_DROP;
+  }
+
+  if(update_dst_mac_address(p_ip, p_new_eth)) {
+    return XDP_DROP;
+  }
+
+  // Adjust head to the right.
+  bpf_xdp_adjust_head(p_ctx, outer_header_size);
+  
+  return 0;
+}
+
 static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_far)
 {
   bpf_debug("create_outer_header_gtpu_ipv4");
@@ -78,21 +126,8 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   // KISS - Lets start using the first PDR (high priority).
   // Resize the header in order to put the GTP/UPD/IP headers.
   // Adjust space to the left.
-  p_eth = p_data;
-  if((void *)(p_eth + 1) > p_data_end) {
-    bpf_debug("Invalid pointer");
-    return XDP_DROP;
-  }
+  bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP_ENCAPSULATED_SIZE);
   
-  if (p_eth->h_proto == ETH_P_IP) {
-    bpf_debug("Removing outer ipv4 header");
-    bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP_ENCAPSULATED_SIZE);
-  }
-  else {
-    bpf_debug("Removing outer ipv6 header");
-    bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP6_ENCAPSULATED_SIZE);
-  }
-
   // Packet buffer changed, all pointers need to be recomputed
   p_data = (void *)(long)p_ctx->data;
   p_data_end = (void *)(long)p_ctx->data_end;
@@ -229,28 +264,7 @@ static u32 pfcp_far_apply(struct xdp_md *p_ctx, pfcp_far_t_ *p_far)
       switch(outer_header_creation) {
       case OUTER_HEADER_CREATION_UDP_IPV4:
         bpf_debug("OUTER_HEADER_CREATION_UDP_IPV4\n");
-        struct ethhdr *p_new_eth = p_data + GTP_ENCAPSULATED_SIZE;
-
-        // Move eth header forward.
-        if((void *)(p_new_eth + 1) > p_data_end) {
-          return 1;
-        }
-        __builtin_memcpy(p_new_eth, p_eth, sizeof(*p_eth));
-
-        // Update destination mac address.o
-        struct iphdr *p_ip = (void *)(p_new_eth + 1);
-
-        if((void *)(p_ip + 1) > p_data_end) {
-          return XDP_DROP;
-        }
-
-        if(update_dst_mac_address(p_ip, p_new_eth)) {
-          return XDP_DROP;
-        }
-
-        // Adjust head to the right.
-        bpf_xdp_adjust_head(p_ctx, GTP_ENCAPSULATED_SIZE);
-
+        create_outer_header_udp_ipv4(p_ctx);
         long act = bpf_redirect_map(&m_redirect_interfaces, UPLINK, 0);
         if (act == XDP_REDIRECT) {
           bpf_debug("REDIRECT SUCCESSFUL!\n");
