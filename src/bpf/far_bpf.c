@@ -9,6 +9,7 @@
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/udp.h>
 #include <pfcp/pfcp_far.h>
 #include <pfcp/pfcp_pdr.h>
@@ -77,7 +78,20 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   // KISS - Lets start using the first PDR (high priority).
   // Resize the header in order to put the GTP/UPD/IP headers.
   // Adjust space to the left.
-  bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP_ENCAPSULATED_SIZE);
+  p_eth = p_data;
+  if((void *)(p_eth + 1) > p_data_end) {
+    bpf_debug("Invalid pointer");
+    return XDP_DROP;
+  }
+  
+  if (p_eth->h_proto == ETH_P_IP) {
+    bpf_debug("Removing outer ipv4 header");
+    bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP_ENCAPSULATED_SIZE);
+  }
+  else {
+    bpf_debug("Removing outer ipv6 header");
+    bpf_xdp_adjust_head(p_ctx, (int32_t)-GTP6_ENCAPSULATED_SIZE);
+  }
 
   // Packet buffer changed, all pointers need to be recomputed
   p_data = (void *)(long)p_ctx->data;

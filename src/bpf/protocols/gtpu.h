@@ -10,6 +10,10 @@
                                 sizeof(struct udphdr) +     \
                                 sizeof(struct gtpuhdr))
 
+#define GTP6_ENCAPSULATED_SIZE (sizeof(struct ipv6hdr) + \
+                                sizeof(struct udphdr) +  \
+                                sizeof(struct gtpuhdr))
+
 #define GTP_UDP_PORT 2152u //!< TS 29 281
 #define GTP_FLAGS 0x30     //!< Version: GTPv1, Protocol Type: GTP, Others: 0 
 
