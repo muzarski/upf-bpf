@@ -96,7 +96,7 @@ static u32 create_outer_header_udp_ipv4(struct xdp_md *p_ctx) {
     return 1;
   }
   __builtin_memcpy(p_new_eth, p_eth, sizeof(*p_eth));
-  p_new_eth->h_proto = ETH_P_IP;
+  p_new_eth->h_proto = htons(ETH_P_IP);
 
   // Update destination mac address.o
   struct iphdr *p_ip = (void *)(p_new_eth + 1);
