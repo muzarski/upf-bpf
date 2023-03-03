@@ -146,7 +146,7 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   if((void *)(p_orig_eth + 1) > p_data_end) {
     return XDP_DROP;
   }
-  memcpy(p_eth, p_orig_eth, sizeof(*p_eth));
+  __builtin_memcpy(p_eth, p_orig_eth, sizeof(*p_eth));
 
   p_ip = (void *)(p_eth + 1);
   if((void *)(p_ip + 1) > p_data_end) {
