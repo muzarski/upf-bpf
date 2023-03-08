@@ -28,6 +28,60 @@
 #define LOCAL_MAC 0
 #endif
 
+#define MAX_UDP_LENGTH 1480
+
+static __always_inline __u16 ip_checksum(unsigned short *buf, int bufsz) {
+  unsigned long sum = 0;
+
+  while (bufsz > 1) {
+    sum += *buf;
+    buf++;
+    bufsz -= 2;
+  }
+
+  if (bufsz == 1) {
+    sum += *(unsigned char *)buf;
+  }
+
+  sum = (sum & 0xffff) + (sum >> 16);
+  sum = (sum & 0xffff) + (sum >> 16);
+
+  return ~sum;
+}
+
+static __always_inline __u16 udp_checksum(struct iphdr *ip, struct udphdr * udp, void * data_end)
+{
+  __u16 csum = 0;
+  __u16 *buf = (__u16*)udp;
+
+  // Compute pseudo-header checksum
+  csum += ip->saddr;
+  csum += ip->saddr >> 16;
+  csum += ip->daddr;
+  csum += ip->daddr >> 16;
+  csum += (__u16)ip->protocol << 8;
+  csum += udp->len;
+
+  // Compute checksum on udp header + payload
+  for (int i = 0; i < MAX_UDP_LENGTH; i += 2) {
+    if ((void *)(buf + 1) > data_end) {
+      break;
+    }
+    csum += *buf;
+    buf++;
+  }
+
+  if ((void *)buf + 1 <= data_end) {
+    // In case payload is not 2 bytes aligned
+    csum += *(__u8 *)buf;
+  }
+
+  csum = ~csum;
+  return csum;
+}
+
+
+
 // TODO navarrothiago - Put dummy in test folder.
 /**
  * WARNING: Redirect require an XDP bpf_prog loaded on the TX device.
@@ -87,7 +141,7 @@ static u32 create_outer_header_udp_ipv4(struct xdp_md *p_ctx) {
     bpf_debug("Outer header is ipv6");
     outer_header_size = GTP6_ENCAPSULATED_SIZE;
   }
-  
+
   struct ethhdr *p_new_eth = p_data + outer_header_size;
   
   // Move eth header forward.
@@ -171,6 +225,7 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   p_ip->ttl = 64;
   p_ip->protocol = IPPROTO_UDP;
   p_ip->check = 0;
+  p_ip->check = ip_checksum((__u16 *)p_ip, sizeof(struct iphdr));
   p_ip->saddr = LOCAL_IP;
   p_ip->daddr = p_far->forwarding_parameters.outer_header_creation.ipv4_address.s_addr;
 
@@ -184,6 +239,7 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   p_udp->dest = htons(p_far->forwarding_parameters.outer_header_creation.port_number);
   p_udp->len = htons(ntohs(p_inner_ip->tot_len) + sizeof(*p_udp) + sizeof(struct gtpuhdr));
   p_udp->check = 0;
+  p_udp->check = udp_checksum(p_ip, p_udp, p_data_end);
 
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[0], p_eth->h_dest[1], p_eth->h_dest[2]);
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[3], p_eth->h_dest[4], p_eth->h_dest[5]);
@@ -199,7 +255,7 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
     return XDP_DROP;
   }
   // swap_src_dst_mac(p_data);
-  memcpy(p_eth->h_dest, p_mac_address, sizeof(p_eth->h_dest));
+  __builtin_memcpy(p_eth->h_dest, p_mac_address, sizeof(p_eth->h_dest));
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[0], p_eth->h_dest[1], p_eth->h_dest[2]);
   bpf_debug("Destination MAC:%x:%x:%x\n", p_eth->h_dest[3], p_eth->h_dest[4], p_eth->h_dest[5]);
   bpf_debug("Destination IP:%d Port:%d\n", p_ip->daddr, p_far->forwarding_parameters.outer_header_creation.port_number);
@@ -211,7 +267,7 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   }
 
   u8 flags = GTP_FLAGS;
-  memcpy(p_gtpuh, &flags, sizeof(u8));
+  __builtin_memcpy(p_gtpuh, &flags, sizeof(u8));
   p_gtpuh->message_type = GTPU_G_PDU;
   p_gtpuh->message_length = p_inner_ip->tot_len;
   p_gtpuh->teid = p_far->forwarding_parameters.outer_header_creation.teid;
