@@ -28,26 +28,7 @@
 #define LOCAL_MAC 0
 #endif
 
-#define MAX_UDP_LENGTH 1480
-
-static __always_inline __u16 ip_checksum(unsigned short *buf, int bufsz) {
-  unsigned long sum = 0;
-
-  while (bufsz > 1) {
-    sum += *buf;
-    buf++;
-    bufsz -= 2;
-  }
-
-  if (bufsz == 1) {
-    sum += *(unsigned char *)buf;
-  }
-
-  sum = (sum & 0xffff) + (sum >> 16);
-  sum = (sum & 0xffff) + (sum >> 16);
-
-  return ~sum;
-}
+#define MAX_UDP_LENGTH 65507
 
 static __always_inline __u16 udp_checksum(struct iphdr *ip, struct udphdr * udp, void * data_end)
 {
@@ -228,7 +209,6 @@ static u32 create_outer_header_gtpu_ipv4(struct xdp_md *p_ctx, pfcp_far_t_ *p_fa
   p_ip->ttl = 64;
   p_ip->protocol = IPPROTO_UDP;
   p_ip->check = 0;
-  p_ip->check = ip_checksum((__u16 *)p_ip, sizeof(struct iphdr));
   p_ip->saddr = LOCAL_IP;
   p_ip->daddr = p_far->forwarding_parameters.outer_header_creation.ipv4_address.s_addr;
 
