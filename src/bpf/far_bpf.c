@@ -140,16 +140,11 @@ static u32 create_outer_header_udp_ipv4(struct xdp_md *p_ctx) {
   else if (ntohs(p_eth->h_proto) == ETH_P_IPV6) {
     bpf_debug("Outer header is ipv6");
     outer_header_size = GTP6_ENCAPSULATED_SIZE;
-  }
-<<<<<<< HEAD
-
-=======
-  else {
+  } else {
     bpf_debug("unrecognized L3 proto in outer header.");
     return XDP_ABORTED;
   }
-  
->>>>>>> f14f099c04c606a8f59c48c7938172c183d938e7
+
   struct ethhdr *p_new_eth = p_data + outer_header_size;
   
   // Move eth header forward.
