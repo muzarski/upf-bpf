@@ -10,6 +10,14 @@
 #include <next_prog_rule_map.h>
 #include <next_prog_rule_key.h>
 #include "ip_key.h"
+#include "xdpdump.h"
+#include <bpf/bpf_helpers.h>
+
+
+#include <stdbool.h>
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_trace_helpers.h>
 
 #define MAX_LENGTH 10
 
@@ -44,6 +52,17 @@ struct bpf_map_def SEC("maps") m_next_rule_prog_index = {
     .value_size = sizeof(u32),
     .max_entries = 10,
 };
+
+struct {
+  __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+  __uint(max_entries, MAX_CPUS);
+  __type(key, int);
+  __type(value, __u32);
+} xdpdump_perf_map SEC(".maps");
+
+
+struct trace_configuration trace_cfg SEC(".data");
+
 
 //BPF_ANNOTATE_KV_PAIR(m_next_rule_prog_index, struct next_rule_prog_index_key, u32);
 

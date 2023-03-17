@@ -19,6 +19,7 @@
 #include <next_prog_rule_key.h>
 #include <string.h>
 #include "ip_key.h"
+#include "xdpdump.h"
 
 #ifdef KERNEL_SPACE
 #include <linux/in.h>
@@ -29,6 +30,11 @@
 /* Defines xdp_stats_map */
 #include "xdp_stats_kern.h"
 #include "xdp_stats_kern_user.h"
+
+/*****************************************************************************
+ * Macros
+ *****************************************************************************/
+#define min(x, y) ((x) < (y) ? x : y)
 
 void ipv6_to_string(const u8 *ipv6, u8* buffer) {
   const int num_blocks = 8;
@@ -382,6 +388,34 @@ static u32 eth_handle(struct xdp_md *p_ctx, struct ethhdr *ethh)
   }
 }
 
+/*****************************************************************************
+ * XDP trace program
+ *****************************************************************************/
+int xdpdump(struct xdp_md *xdp)
+{
+  void *data_end = (void *)(long)xdp->data_end;
+  void *data = (void *)(long)xdp->data;
+  struct pkt_trace_metadata metadata;
+
+  if (data >= data_end ||
+     trace_cfg.capture_if_ifindex != xdp->ingress_ifindex)
+    return XDP_PASS;
+
+  metadata.prog_index = trace_cfg.capture_prog_index;
+  metadata.ifindex = xdp->ingress_ifindex;
+  metadata.rx_queue = xdp->rx_queue_index;
+  metadata.pkt_len = (__u16)(data_end - data);
+  metadata.cap_len = min(metadata.pkt_len, trace_cfg.capture_snaplen);
+  metadata.action = 0;
+  metadata.flags = 0;
+
+  bpf_perf_event_output(xdp, &xdpdump_perf_map,
+                        ((__u64) metadata.cap_len << 32) |
+                            BPF_F_CURRENT_CPU,
+                        &metadata, sizeof(metadata));
+}
+
+
 SEC("xdp_entry_point")
 int entry_point(struct xdp_md *p_ctx)
 {
@@ -389,6 +423,8 @@ int entry_point(struct xdp_md *p_ctx)
   struct ethhdr *eth = p_data;
 
   bpf_debug("XDP ENTRY POINT");
+
+  xdpdump(p_ctx);
 
   // Start to handle the ethernet header.
   u32 action = xdp_stats_record_action(p_ctx, eth_handle(p_ctx, eth));

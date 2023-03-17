@@ -28,7 +28,7 @@
 #define LOCAL_MAC 0
 #endif
 
-#define MAX_UDP_LENGTH 65507
+#define MAX_UDP_LENGTH 2000
 
 static __always_inline __u16 udp_checksum(struct iphdr *ip, struct udphdr * udp, void * data_end)
 {
