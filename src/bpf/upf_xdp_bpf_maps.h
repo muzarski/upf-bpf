@@ -58,7 +58,7 @@ struct trace_configuration {
   __u32 capture_if_ifindex;
   __u32 capture_snaplen;
   __u32 capture_prog_index;
-} trace_cfg SEC(".data");
+} trace_cfg /* SEC(".data") */;
 
 
 //BPF_ANNOTATE_KV_PAIR(m_next_rule_prog_index, struct next_rule_prog_index_key, u32);
