@@ -12,8 +12,6 @@
 #include "ip_key.h"
 #include <xdpdump.h>
 
-
-
 #define MAX_LENGTH 10
 
 // Maps TEID to SessionProgram
@@ -51,8 +49,8 @@ struct bpf_map_def SEC("maps") m_next_rule_prog_index = {
 struct {
   __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
   __uint(max_entries, MAX_CPUS);
-  u32 key;
-  u32 value;
+  __type(key, int);
+  __type(value, __u32);
 } xdpdump_perf_map SEC(".maps");
 
 
