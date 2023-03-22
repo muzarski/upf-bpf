@@ -56,6 +56,12 @@ struct {
 } xdpdump_perf_map SEC(".maps");
 
 
+struct trace_configuration {
+  __u32 capture_if_ifindex;
+  __u32 capture_snaplen;
+  __u32 capture_prog_index;
+};
+
 struct trace_configuration trace_cfg SEC(".data");
 
 
